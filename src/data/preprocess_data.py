@@ -3,76 +3,85 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
 
 class DataPreprocessor:
-    def __init__(self, imputation_file_path, normalization_file_path, output_folder):
+    def __init__(self, raw_file_path=None, imputation_file_path=None, output_folder='../../data/processed', perform_imputation=False, perform_normalization=True, perform_pca=True, split_data=True):
+        self.raw_file_path = raw_file_path
         self.imputation_file_path = imputation_file_path
-        self.normalization_file_path = normalization_file_path
         self.output_folder = output_folder
+        self.should_impute = perform_imputation
+        self.should_normalize = perform_normalization
+        self.should_perform_pca = perform_pca
+        self.should_split_data = split_data
 
-    def impute_missing_values(self):
-        raw_data = pd.read_csv(self.imputation_file_path)
+    def impute_missing_values(self, df):
         imputer = SimpleImputer(strategy='most_frequent')
-        raw_data['msi_status'] = imputer.fit_transform(raw_data[['msi_status']])
-        imputed_file_path = self.output_folder + '/prediction_file_crc_imputed.csv'
-        raw_data.to_csv(imputed_file_path, index=False)
-        return imputed_file_path
+        df['msi_status'] = imputer.fit_transform(df[['msi_status']])
+        return df
 
-    def normalize_data(self):
-        rna_data = pd.read_csv(self.normalization_file_path)
-        rna_counts = rna_data.set_index(rna_data.columns[0])
-        gene_lengths = [1000] * len(rna_counts)  # Assume gene length 1000 bps
-        RPK = rna_counts.div(gene_lengths, axis=0)
-        sum_RPK = RPK.sum(axis=0)
-        TPM = RPK.div(sum_RPK, axis=1) * 1e6
+    def normalize_data(self, df):
+        data_for_normalization = df.select_dtypes(include=['float64', 'int64'])
         scaler = StandardScaler()
-        TPM_scaled = scaler.fit_transform(TPM.T)
-        TPM_scaled_df = pd.DataFrame(TPM_scaled, index=TPM.columns, columns=TPM.index)
-        normalized_file_path = self.output_folder + '/normalized_tcga_rna_tpm.csv'
-        TPM_scaled_df.to_csv(normalized_file_path)
-        return normalized_file_path
+        scaled_data = scaler.fit_transform(data_for_normalization)
+        normalized_df = pd.DataFrame(scaled_data, columns=data_for_normalization.columns)
+        return normalized_df
 
-    def perform_pca(self, normalized_file_path):
-        df = pd.read_csv(normalized_file_path)
-        df_for_pca = df.iloc[:, 1:]  # Exclude gene name/index column
+    def perform_pca(self, df):
         scaler = StandardScaler()
-        scaled_data = scaler.fit_transform(df_for_pca)
+        scaled_data = scaler.fit_transform(df)
         pca = PCA(n_components=2)
         pca_result = pca.fit_transform(scaled_data)
         pca_df = pd.DataFrame(data=pca_result, columns=['Principal Component 1', 'Principal Component 2'])
-        reduced_data_path = self.output_folder + '/reduced_tcga_rna_tpm.csv'
-        pca_df.to_csv(reduced_data_path, index=False)
-        return reduced_data_path
+        return pca_df
 
-    def split_data(self, pca_data_path):
-        df = pd.read_csv(pca_data_path)
+    def split_and_save_data(self, df):
+        # Assuming the principal components are named 'Principal Component 1' and 'Principal Component 2'
         X_pca = df[['Principal Component 1', 'Principal Component 2']].values
+
         X_train, X_rest = train_test_split(X_pca, test_size=0.4, random_state=42)
         X_val, X_test = train_test_split(X_rest, test_size=0.5, random_state=42)
-        self._save_split_data(X_train, "train_data.csv", df.columns)
-        self._save_split_data(X_val, "validation_data.csv", df.columns)
-        self._save_split_data(X_test, "test_data.csv", df.columns)
 
-    def _save_split_data(self, data, filename, header):
-        file_path = self.output_folder + '/' + filename
-        data_df = pd.DataFrame(data, columns=header[-2:])  # Assuming last 2 columns are PCs
-        data_df.to_csv(file_path, index=False)
+        train_file = f"{self.output_folder}/train_data.csv"
+        val_file = f"{self.output_folder}/validation_data.csv"
+        test_file = f"{self.output_folder}/test_data.csv"
+
+        self.write_data_to_file(train_file, X_train, df.columns)
+        self.write_data_to_file(val_file, X_val, df.columns)
+        self.write_data_to_file(test_file, X_test, df.columns)
+    
+    def write_data_to_file(self, file_name, data, header):
+        with open(file_name, "w") as f:
+            f.write(','.join(header) + '\n')
+            for sample in data:
+                f.write(','.join(map(str, sample)) + '\n')
 
     def run(self):
-        # Step 1: Imputation
-        imputed_file_path = self.impute_missing_values()
-        
-        # Step 2: Normalization (Assuming this step is applied to a different file)
-        normalized_file_path = self.normalize_data()
-        
-        # Step 3: PCA
-        pca_data_path = self.perform_pca(normalized_file_path)
-        
-        # Step 4: Data Splitting
-        self.split_data(pca_data_path)
+        df = None
+        if self.should_normalize and self.raw_file_path:
+            df = pd.read_csv(self.raw_file_path)
+            df = self.normalize_data(df)
+            df.to_csv(f'{self.output_folder}/normalized_data.csv', index=False)
 
-data_preprocessor = DataPreprocessor('../../data/raw/prediction_file_crc.csv',
-                                     '../../data/raw/tcga_rna_count_data_crc.csv',
-                                     '../../data/processed')
-data_preprocessor.run()
+        if self.should_impute and self.imputation_file_path:
+            imputation_df = pd.read_csv(self.imputation_file_path)
+            imputation_df = self.impute_missing_values(imputation_df)
+            imputation_df.to_csv(f'{self.output_folder}/imputed_data.csv', index=False)
+            # Optionally merge imputed data with the main dataframe as needed
+            if df is not None:
+                df = df.merge(imputation_df, how='left', on='some_common_column')
+
+        if self.should_perform_pca and df is not None:
+            df = self.perform_pca(df)
+            df.to_csv(f'{self.output_folder}/pca_data.csv', index=False)
+        
+        if self.should_split_data and df is not None:
+            self.split_and_save_data(df)
+
+preprocessor = DataPreprocessor(raw_file_path='../../data/raw/tcga_rna_count_data_crc.csv',
+                                imputation_file_path='../../data/raw/prediction_file_crc.csv',
+                                perform_imputation=False,
+                                perform_normalization=True,
+                                perform_pca=True,
+                                split_data=True
+)
+preprocessor.run()
