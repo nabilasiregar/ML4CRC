@@ -1,8 +1,11 @@
+
 # to run -->$ python3 Hydra_Python.py --multirun
 # to modify parameters, see optuna_config.yaml file in 'conf' directory.
 # Hydra manages configuration and Optuna does hyperparameter optimization.
 # Optuna calls train_model various times with the different configurations that you define in optuna_config.yaml.
 # Each trial will be registered by Hydra.
+#pip install hydra-optuna-sweeper
+
 
 import hydra
 from omegaconf import DictConfig
