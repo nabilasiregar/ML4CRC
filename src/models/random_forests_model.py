@@ -34,7 +34,8 @@ class RandomForestModel:
 
         best_params = study.best_params
         best_score = study.best_value
-        # After tuning, train the model again with the best parameters found
+        
+        # Train the model again with the best parameters found
         self.train(X_train, y_train, n_estimators=best_params['n_estimators'])
 
         return best_params, best_score

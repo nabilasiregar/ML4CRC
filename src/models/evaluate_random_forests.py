@@ -28,10 +28,10 @@ class ModelEvaluator:
 
 
 if __name__ == "__main__":
-    test_data = pd.read_csv('../../data/processed/test_data.csv')
+    test_data = pd.read_csv('../../data/processed/test_data_impute.csv')
 
     X_test = test_data.iloc[:, :-1]
     y_test = test_data.iloc[:, -1].astype(str)
 
-    evaluator = ModelEvaluator('random_forest_model.joblib')
+    evaluator = ModelEvaluator('best_random_forest_model_with_oversampling_imputation.joblib')
     evaluator.evaluate(X_test, y_test)
