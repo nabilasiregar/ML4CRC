@@ -1,3 +1,12 @@
 defaults:
-  - db: sqlite
-  - optimizer: adam
+  - svm: 'default_svm.yaml'
+
+data:
+  train_features: "../../data/final/train_features_smote.csv"
+  train_labels: "../../data/final/train_labels_smote.csv"
+  val_features: "../../data/final/val_features.csv"
+  val_labels: "../../data/final/val_labels.csv"
+
+hydra:
+  run:
+    dir: .
