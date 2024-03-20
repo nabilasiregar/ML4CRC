@@ -8,23 +8,21 @@ class RandomForestModel:
         self.random_state = random_state
         self.model = None
 
-    def train(self, X_train, y_train, n_estimators=100, max_features='auto', evaluate_on_train=False):
+    def train(self, X_train, y_train, n_estimators=100, max_features='auto', max_depth=None, 
+              min_samples_split=2, min_samples_leaf=1, bootstrap=True):
         """
-        Train the model and optionally evaluate it on the training set.
-        
-        :param X_train: Training features.
-        :param y_train: Training target variable.
-        :param n_estimators: Number of trees in the forest.
-        :param max_features: The number of features to consider when looking for the best split.
-        :param evaluate_on_train: If True, evaluate the model on the training data.
-        :return: Training F1 score if evaluate_on_train is True, otherwise None.
+        Train the RandomForest model with given hyperparameters.
         """
-        self.model = RandomForestClassifier(n_estimators=n_estimators, max_features=max_features, random_state=self.random_state)
+        self.model = RandomForestClassifier(
+            n_estimators=n_estimators, 
+            max_features=max_features, 
+            max_depth=max_depth,
+            min_samples_split=min_samples_split,
+            min_samples_leaf=min_samples_leaf,
+            bootstrap=bootstrap,
+            random_state=self.random_state
+        )
         self.model.fit(X_train, y_train)
-        if evaluate_on_train:
-            y_pred_train = self.model.predict(X_train)
-            train_f1 = f1_score(y_train, y_pred_train, average='macro')
-            return train_f1
 
     def predict(self, X):
         return self.model.predict(X)
@@ -38,18 +36,46 @@ class RandomForestModel:
 
     def tune_hyperparameters(self, X_train, y_train, X_test, y_test, n_trials=100):
         def objective(trial):
+            # Define the hyperparameter configuration space
             n_estimators = trial.suggest_int('n_estimators', 10, 200)
-            max_features = trial.suggest_categorical('max_features', ['sqrt', None])
-            self.train(X_train, y_train, n_estimators=n_estimators, max_features=max_features)
+            max_features = trial.suggest_categorical('max_features', ['sqrt', 'log2', None])
+            max_depth = trial.suggest_int('max_depth', 10, 100, log=True) or None
+            min_samples_split = trial.suggest_int('min_samples_split', 2, 10)
+            min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 10)
+            bootstrap = trial.suggest_categorical('bootstrap', [True, False])
+
+            # Train the model with suggested hyperparameters
+            self.train(
+                X_train, y_train, 
+                n_estimators=n_estimators, 
+                max_features=max_features,
+                max_depth=max_depth,
+                min_samples_split=min_samples_split,
+                min_samples_leaf=min_samples_leaf,
+                bootstrap=bootstrap
+            )
+            
+            # Evaluate the model
             return self.evaluate(X_test, y_test)
 
+        # Create a study object and optimize the objective function
         study = optuna.create_study(direction='maximize')
         study.optimize(objective, n_trials=n_trials)
 
-        best_params = study.best_trial.params
-        best_score = study.best_trial.value
+        best_params = study.best_params
+        best_score = study.best_value
         
-        # Retrain the model with the best parameters found and evaluate on training set
-        train_f1 = self.train(X_train, y_train, n_estimators=best_params['n_estimators'], max_features=best_params['max_features'], evaluate_on_train=True)
+        # Retrain with best parameters and evaluate on the training set
+        self.train(
+            X_train, y_train, 
+            n_estimators=best_params['n_estimators'], 
+            max_features=best_params['max_features'],
+            max_depth=best_params['max_depth'],
+            min_samples_split=best_params['min_samples_split'],
+            min_samples_leaf=best_params['min_samples_leaf'],
+            bootstrap=best_params['bootstrap']
+        )
+        
+        train_f1 = self.evaluate(X_train, y_train)
 
         return best_params, best_score, train_f1

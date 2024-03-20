@@ -51,10 +51,10 @@ def main(model_path, train_features_path, train_labels_path, test_features_path,
 
 if __name__ == "__main__":
     output_dir = '../../data/final/'
-    model_path = f"{output_dir}best_random_forest_model.joblib"
-    train_features_path = f"{output_dir}/train_features_smote_pca.csv"
-    train_labels_path = f"{output_dir}/train_labels_pca.csv"
-    test_features_path = f"{output_dir}/test_features_pca.csv"
+    model_path = '../../data/jobs/best_random_forest_model_without_pca.joblib'
+    train_features_path = f"{output_dir}/train_features_smote.csv"
+    train_labels_path = f"{output_dir}/train_labels_smote.csv"
+    test_features_path = f"{output_dir}/test_features.csv"
     test_labels_path = f"{output_dir}/test_labels.csv"
 
     main(model_path, train_features_path, train_labels_path, test_features_path, test_labels_path)
