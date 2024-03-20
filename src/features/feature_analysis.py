@@ -1,24 +1,35 @@
 import joblib
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
-def plot_feature_importance(model, feature_names, top_n=20):
-    importances = model.feature_importances_
-    indices = np.argsort(importances)[-top_n:]
-    plt.figure(figsize=(10, 8))
-    plt.title("Top 20 Important Features")
-    plt.barh(range(top_n), importances[indices], align="center")
-    plt.yticks(range(top_n), [feature_names[i] for i in indices])
-    plt.xlabel("Relative Importance")
-    plt.show()
+model_path = '../../data/final/best_random_forest_model.joblib'
+model = joblib.load(model_path)
 
-if __name__ == "__main__":
-    model_path = "../models/best_random_forest_model_with_smote_rna_only.joblib"
-    model = joblib.load(model_path)
+importances = model.feature_importances_
+indices = np.argsort(importances)[::-1]
+feature_names = [f'PC{i+1}' for i in range(len(importances))]
+N = 10
 
-    data_path = "../../data/processed/train_data_oversampled.csv"
-    data_for_features = pd.read_csv(data_path)
-    feature_names = data_for_features.columns[:-1]  # Exclude the target variable
+plt.figure(figsize=(12, 6))
+plt.title('Feature Importances')
+plt.bar(range(N), importances[indices][:N], color="r", align="center")
+plt.xticks(range(N), [feature_names[i] for i in indices[:N]], rotation=45)
+plt.xlim([-1, N])
+plt.ylabel('Relative Importance')
+plt.tight_layout()
+plt.show()
 
-    plot_feature_importance(model, feature_names, top_n=20)
+print("Top 10 Feature importances:")
+for i in range(N):
+    print(f"{feature_names[indices[i]]}: {importances[indices[i]]:.4f}")
+
+selected_features = [feature_names[i] for i in indices[:N]]
+
+cumulative_importance_threshold = 0.95
+cumulative_importances = np.cumsum(importances[indices])
+threshold_index = np.where(cumulative_importances > cumulative_importance_threshold)[0][0] + 1
+selected_features_threshold = [feature_names[i] for i in indices[:threshold_index]]
+
+print("Selected features based on fixed N:", selected_features)
+print("Selected features based on threshold:", selected_features_threshold)
