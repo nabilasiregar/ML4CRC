@@ -1,15 +1,20 @@
 import joblib
 import optuna
+from optuna.integration import OptunaSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import f1_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import cross_val_score
+import csv
+
 
 class RandomForestModel:
     def __init__(self, random_state=42):
         self.random_state = random_state
         self.model = None
 
-    def train(self, X_train, y_train, n_estimators=100, max_features='auto', max_depth=None, 
-              min_samples_split=2, min_samples_leaf=1, bootstrap=True):
+    def train(self, X_train, y_train, n_estimators=100, max_features=None, max_depth=None, 
+              min_samples_split=4, min_samples_leaf=3, bootstrap=True):
         """
         Train the RandomForest model with given hyperparameters.
         """
@@ -34,48 +39,62 @@ class RandomForestModel:
     def save_model(self, filepath):
         joblib.dump(self.model, filepath)
 
-    def tune_hyperparameters(self, X_train, y_train, X_test, y_test, n_trials=100):
+    def tune_hyperparameters(self, X_train, y_train, n_trials=100, n_splits=5, csv_file='tuning_log.csv'):
         def objective(trial):
-            # Define the hyperparameter configuration space
             n_estimators = trial.suggest_int('n_estimators', 10, 200)
-            max_features = trial.suggest_categorical('max_features', ['sqrt', 'log2', None])
-            max_depth = trial.suggest_int('max_depth', 10, 100, log=True) or None
-            min_samples_split = trial.suggest_int('min_samples_split', 2, 10)
-            min_samples_leaf = trial.suggest_int('min_samples_leaf', 1, 10)
-            bootstrap = trial.suggest_categorical('bootstrap', [True, False])
+            max_depth = trial.suggest_int('max_depth', 10, 100)
 
-            # Train the model with suggested hyperparameters
-            self.train(
-                X_train, y_train, 
+            model = RandomForestClassifier(
                 n_estimators=n_estimators, 
-                max_features=max_features,
+                max_features=None,  
                 max_depth=max_depth,
-                min_samples_split=min_samples_split,
-                min_samples_leaf=min_samples_leaf,
-                bootstrap=bootstrap
+                min_samples_split=4, 
+                min_samples_leaf=3, 
+                bootstrap=True, 
+                random_state=self.random_state
             )
-            
-            # Evaluate the model
-            return self.evaluate(X_test, y_test)
 
-        # Create a study object and optimize the objective function
+            # Perform cross-validation
+            f1_scores = cross_val_score(model, X_train, y_train, cv=StratifiedKFold(n_splits=n_splits), scoring='f1_macro')
+            mean_f1_score = f1_scores.mean()
+
+            return mean_f1_score
+
+        def trial_callback(study, trial):
+            # Append trial results to CSV file
+            with open(csv_file, 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([trial.number, trial.params['n_estimators'], trial.params['max_depth'], trial.value])
+
+        # Prepare the CSV file for logging
+        with open(csv_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['trial', 'n_estimators', 'max_depth', 'f1_score'])
+
+        # Create and optimize the study
         study = optuna.create_study(direction='maximize')
-        study.optimize(objective, n_trials=n_trials)
+        study.optimize(objective, n_trials=n_trials, callbacks=[trial_callback])
 
         best_params = study.best_params
         best_score = study.best_value
-        
-        # Retrain with best parameters and evaluate on the training set
-        self.train(
-            X_train, y_train, 
-            n_estimators=best_params['n_estimators'], 
-            max_features=best_params['max_features'],
+
+        # Retrain the model on the full dataset with the best parameters
+        self.model = RandomForestClassifier(
+            n_estimators=best_params['n_estimators'],
             max_depth=best_params['max_depth'],
-            min_samples_split=best_params['min_samples_split'],
-            min_samples_leaf=best_params['min_samples_leaf'],
-            bootstrap=best_params['bootstrap']
+            max_features=None,
+            min_samples_split=4,
+            min_samples_leaf=3,
+            bootstrap=True,
+            random_state=self.random_state
         )
-        
+        self.model.fit(X_train, y_train)
+
+        # Optionally, evaluate the retrained model's performance on the training set or a separate test set
         train_f1 = self.evaluate(X_train, y_train)
+        print("F1 Score after retraining on the full training set:", train_f1)
+
+        # Save the retrained model
+        self.save_model('../../data/jobs/retrained_rf_model.joblib')
 
         return best_params, best_score, train_f1
