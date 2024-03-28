@@ -26,7 +26,7 @@ def save_dataset(X, filepath):
     """Save the dataset X to the specified filepath."""
     X.to_csv(filepath, index=False)
 
-def main():
+def main(use_all_features=False):
     train_features_path = '../../data/final/train_features_80:20_smote.csv'
     train_labels_path = '../../data/final/train_labels_80:20_smote.csv'
     
@@ -48,19 +48,21 @@ def main():
         'GZMA', 'GZMB', 'CX3CL1', 'CXCL9', 'CXCL10', 'IFNG', 'IL1B', 'LAG3',
         'CTLA4', 'CD274', 'PDCD1', 'TIGIT', 'IDO1', 'PDCD1LG2', 'VEGFA', 'VEGFB', 'VEGFC', 'VEGFD'
     ]
+    
+    if use_all_features:
+        X_used = X
+        features_path = '../../data/final/train_features_80:20_smote.csv'
+        model_filepath = '../../data/jobs/all_features_model.joblib'
+    else:
+        X_used = select_features(X, relevant_genes)
+        features_path = '../../data/final/reduced_training_features.csv'
+        model_filepath = '../../data/jobs/selected_features_model.joblib'
 
-    X_selected = select_features(X, relevant_genes)
-
-    reduced_features_path = '../../data/final/reduced_training_features.csv'
-    save_dataset(X_selected, reduced_features_path)
-
-    model = train_model(X_selected, y, best_params)
-
-    model_filepath = '../../data/jobs/selected_features_model.joblib'
+    save_dataset(X_used, features_path)
+    model = train_model(X_used, y, best_params)
     save_model(model, model_filepath)
 
-    print(f"Model trained with selected features and saved to {model_filepath}")
+    print(f"Model trained with {'all features' if use_all_features else 'selected features'} and saved to {model_filepath}")
 
 if __name__ == '__main__':
-    main()
-
+    main(use_all_features=True)  # Change to True to use all features

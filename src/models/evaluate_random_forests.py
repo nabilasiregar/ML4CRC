@@ -26,11 +26,15 @@ class ModelEvaluator:
         
         # Plot confusion matrix
         conf_matrix = confusion_matrix(y, y_pred)
-        plt.figure(figsize=(10, 7))
-        sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
-        plt.xlabel('Predicted Labels')
-        plt.ylabel('True Labels')
-        plt.title(f"{set_name} Set Confusion Matrix")
+        plt.figure(figsize=(12, 8))
+        heatmap = sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", annot_kws={"fontsize": 16})
+        colorbar = heatmap.collections[0].colorbar
+        colorbar.ax.tick_params(labelsize=16)
+        plt.xlabel('Predicted Labels', fontsize=18)
+        plt.xticks(fontsize=16)
+        plt.ylabel('True Labels',  fontsize=18)
+        plt.yticks(fontsize=16)
+        plt.title(f"{set_name} Set Confusion Matrix for Random Forest Without Feature Selection", fontsize=20, pad=20)
         plt.show()
         
         # Print classification report
@@ -40,9 +44,9 @@ def main(model_path, train_features_path, train_labels_path, test_features_path,
     evaluator = ModelEvaluator(model_path)
 
     # Load and evaluate training data
-    X_train, y_train = evaluator.load_data(train_features_path, train_labels_path)
-    print("Evaluating Training Set:")
-    evaluator.evaluate(X_train, y_train, set_name="Training")
+    # X_train, y_train = evaluator.load_data(train_features_path, train_labels_path)
+    # print("Evaluating Training Set:")
+    # evaluator.evaluate(X_train, y_train, set_name="Training")
 
     # Load and evaluate test data
     X_test, y_test = evaluator.load_data(test_features_path, test_labels_path)
@@ -51,7 +55,7 @@ def main(model_path, train_features_path, train_labels_path, test_features_path,
 
 if __name__ == "__main__":
     output_dir = '../../data/final/'
-    model_path = '../../data/jobs/best_random_forest_model.joblib'
+    model_path = '../../data/jobs/all_features_model.joblib'
     train_features_path = f"{output_dir}/train_features_80:20_smote.csv"
     train_labels_path = f"{output_dir}/train_labels_80:20_smote.csv"
     test_features_path = f"{output_dir}/test_features_80:20.csv"

@@ -38,11 +38,15 @@ class ModelEvaluator:
         
         # Plot confusion matrix
         conf_matrix = confusion_matrix(y, y_pred)
-        plt.figure(figsize=(10, 7))
-        sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues")
-        plt.xlabel('Predicted Labels')
-        plt.ylabel('True Labels')
-        plt.title(f"{set_name} Set Confusion Matrix")
+        plt.figure(figsize=(12, 8))
+        heatmap = sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", annot_kws={"fontsize": 16})
+        colorbar = heatmap.collections[0].colorbar
+        colorbar.ax.tick_params(labelsize=16)
+        plt.xlabel('Predicted Labels', fontsize=18)
+        plt.xticks(fontsize=16)
+        plt.ylabel('True Labels', fontsize=18)
+        plt.yticks(fontsize=16)
+        plt.title(f"{set_name} Set Confusion Matrix for Random Forest With Feature Selection", fontsize=20, pad=20)
         plt.show()
         
         # Print classification report
