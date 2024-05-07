@@ -50,7 +50,7 @@ def main(model_path, selected_features_path, test_features_path, test_labels_pat
     evaluator.evaluate(X_test, y_test, set_name="Test")
 
 if __name__ == "__main__":
-    model_path = 'rf_model_final.joblib'
+    model_path = 'rf_model_100features.joblib'
     selected_features_path = '../../data/final/selected_features.csv' 
     test_features_path = '../../data/final/test_features_80:20.csv'
     test_labels_path = '../../data/final/test_labels_80:20.csv'

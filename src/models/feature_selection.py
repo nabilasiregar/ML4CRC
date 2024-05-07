@@ -30,13 +30,13 @@ def main():
     new_features_to_consider = feature_importances.drop(relevant_genes)
 
     # Select the top 58 new features based on importance
-    additional_features = new_features_to_consider.nlargest(100).index.tolist()
+    additional_features = new_features_to_consider.nlargest(58).index.tolist()
 
     # Combine the known relevant genes with the additional selected features
     final_selected_features = relevant_genes + additional_features
 
     # Save the final selected features for later use
-    pd.Series(final_selected_features).to_csv('selected_features_142.csv', index=False, header=False)
+    pd.Series(final_selected_features).to_csv('selected_features_100.csv', index=False, header=False)
 
     print(f"Total selected features: {len(final_selected_features)}")
 
